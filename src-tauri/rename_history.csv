@@ -1,0 +1,3 @@
+timestamp,old_path,new_path
+2025-09-17T14:10:30.872808,D:\vidyadhar\vidyadhar_text_plain_You are correct. The delay after renaming is likely caused by the application needing to re-read and_Low_20250917_0b1dbed7_1.txt,D:\vidyadhar\{type}_Tiny_{date}_001.txt
+2025-09-17T14:10:30.894839,D:\vidyadhar\vidyadhar_text_plain_this is my file manager code...i want to integrate a file renamer feature in python with the current_Low_20250916_bbe17bbe_2.txt,D:\vidyadhar\{type}_Tiny_{date}_002.txt
