@@ -29,3 +29,64 @@ h2 {
 progress[value] {
   background-color: blue;
 }
+
+/* Density helpers used by App root class */
+.density-compact .p-2 { padding: 6px !important; }
+.density-compact .p-3 { padding: 6px !important; }
+.density-compact .p-4 { padding: 8px !important; }
+.density-compact .text-sm { font-size: 12px !important; }
+
+.density-spacious .p-2 { padding: 12px !important; }
+.density-spacious .p-3 { padding: 16px !important; }
+.density-spacious .p-4 { padding: 20px !important; }
+.density-spacious .text-sm { font-size: 16px !important; }
+
+/* Simple dark mode helper: when root has class 'dark', invert background/text defaults */
+.dark { background-color: #111827; color: #E5E7EB; }
+.dark .bg-white { background-color: #111827 !important; }
+.dark .text-gray-500 { color: #9CA3AF !important; }
+.dark .border-gray-200 { border-color: #1F2937 !important; }
+
+/* Accent variable */
+:root {
+  --accent: #2563eb;
+}
+
+/* Use accent variable for primary-ish elements */
+.bg-accent { background-color: var(--accent) !important; }
+.text-accent { color: var(--accent) !important; }
+
+/* Invert-text: make text contrast with background by using difference blending
+   Approach: set text elements to white and apply mix-blend-mode: difference which
+   produces the visual effect of text color opposite to background. We avoid
+   applying this to images/svg to prevent visual corruption. */
+.invert-text * {
+  /* apply to most text-like elements */
+  color: white !important;
+  mix-blend-mode: difference;
+}
+
+/* Keep images, svg, canvas and icons normal (don't invert) */
+.invert-text img,
+.invert-text svg,
+.invert-text canvas,
+.invert-text video {
+  mix-blend-mode: normal !important;
+  filter: none !important;
+}
+
+/* Avoid inverting backgrounds of components that expect exact colors by resetting where necessary */
+.invert-text .no-invert {
+  mix-blend-mode: normal !important;
+  color: inherit !important;
+}
+
+/* Use CSS variable for focus/primary accent color */
+.focus\:border-accent:focus { border-color: var(--accent) !important; }
+.bg-accent { background-color: var(--accent) !important; }
+
+/* Disable animations when user turns them off */
+.no-animations * {
+  transition: none !important;
+  animation: none !important;
+}

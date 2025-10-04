@@ -13,7 +13,7 @@ interface Props {
 }
 
 export default function Button({ children, size, className, onClick }: Props) {
-    let styles = `bg-bright hover:bg-gray-600 rounded ${className + " " || ""}`;
+    let styles = `rounded ${className + " " || ""} bg-accent text-white hover:opacity-90`;
 
     switch (size) {
         case ButtonSize.Small:

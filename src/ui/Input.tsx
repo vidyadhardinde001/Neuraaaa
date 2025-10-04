@@ -20,7 +20,7 @@ interface Props {
 }
 
 export default function Input({ value, onChange, setValue, placeholder, onSubmit, size, className, disabled, min, max }: Props) {
-    let styles = `outline-none bg-darker border-gray-500 border-1 rounded-md focus:border-gray-300 p-2 disabled:opacity-25 ${className + " " || ""}`;
+    let styles = `outline-none bg-darker border-gray-500 border-1 rounded-md focus:border-accent p-2 disabled:opacity-25 ${className + " " || ""}`;
 
     switch (size) {
         case InputSize.Large:

@@ -1,61 +1,92 @@
-/**
- * InputModal Component
- * ---------------------
- * Reusable popup modal for text input and confirmation.
- * - Displays a title, input field, and Cancel/Submit buttons.
- * - Input must be at least 2 characters long before submitting.
- * - Resets input on cancel or successful submit.
- *
- * Communicates with:
- *  - Parent components (e.g., DirectoryEntity.tsx, ContextMenu.tsx) to handle user actions.
- *  - ../ui/Input.tsx (styled text input).
- *  - ../ui/Button.tsx (styled action buttons).
- */
-
-import Input, {InputSize} from "../ui/Input";
-import {useState} from "react";
-import Button, {ButtonSize} from "../ui/Button";
+import Input, { InputSize } from "../ui/Input";
+import Button, { ButtonSize } from "../ui/Button";
+import { useEffect, useState } from "react";
 
 interface Props {
-    title: string;
-    submitName: string;
-    onSubmit: (value: string) => unknown;
-    shown: boolean;
-    setShown: (shown: boolean) => unknown;
+  title: string;
+  submitName: string;
+  onSubmit: (value: string) => unknown;
+  shown: boolean;
+  setShown: (shown: boolean) => unknown;
 }
 
 export default function InputModal({ shown, setShown, title, onSubmit, submitName }: Props) {
-    const [inputValue, setInputValue] = useState("");
+  const [inputValue, setInputValue] = useState("");
 
-    if (shown) {
-        return (
-            <div className="absolute w-full h-full z-10" style={{
-                backgroundColor: "rgba(0,0,0, 0.4)"
-            }}>
-                <div className="flex justify-around flex-col absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-darker rounded-lg w-60 h-32 z-20 border-gray-700 border-1">
-                    <h3 className="text-center">{title}</h3>
-                    <Input value={inputValue} setValue={setInputValue} size={InputSize.Tiny} className="block mr-auto ml-auto text-center w-48" />
+  // Close modal on ESC key
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setInputValue("");
+        setShown(false);
+      }
+    };
+    if (shown) document.addEventListener("keydown", handleEsc);
+    return () => document.removeEventListener("keydown", handleEsc);
+  }, [shown, setShown]);
 
-                    <div className="flex justify-center space-x-2">
-                        <Button onClick={() => {
-                            setInputValue("");
-                            setShown(false);
-                        }} size={ButtonSize.Small}>Cancel</Button>
-                        <Button onClick={() => {
-                            setInputValue("");
-                            if (inputValue.length > 1) {
-                                onSubmit(inputValue);
-                                setShown(false);
-                                return;
-                            }
+  if (!shown) return null;
 
-                            alert("Input must be at least 2 characters long.");
-                        }} size={ButtonSize.Small}>{submitName}</Button>
-                    </div>
-                </div>
-            </div>
-        )
-    } else {
-        return <></>
-    }
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm transition-opacity duration-200"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+      onClick={() => {
+        setInputValue("");
+        setShown(false);
+      }}
+    >
+      <div
+        className="bg-gray-100 dark:bg-gray-200 rounded-xl shadow-xl w-72 p-2 flex flex-col gap-4 transform transition-transform duration-200 scale-100"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2
+          id="modal-title"
+          className="text-lg font-semibold text-gray-900 dark:text-gray-600 text-center"
+        >
+          {title}
+        </h2>
+
+        <Input
+          value={inputValue}
+          setValue={setInputValue}
+          size={InputSize.Tiny}
+          className="w-full text-center"
+          autoFocus
+          placeholder="Enter name..."
+        />
+
+        <div className="flex justify-center gap-3">
+          <Button
+            onClick={() => {
+              setInputValue("");
+              setShown(false);
+            }}
+            size={ButtonSize.Small}
+            className="rounded-md bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-400 dark:hover:bg-gray-600 transition"
+          >
+            Cancel
+          </Button>
+
+          <Button
+            onClick={() => {
+              if (inputValue.trim().length < 2) {
+                alert("Input must be at least 2 characters long.");
+                return;
+              }
+              onSubmit(inputValue.trim());
+              setInputValue("");
+              setShown(false);
+            }}
+            size={ButtonSize.Small}
+            className=" rounded-md bg-blue-600 hover:bg-blue-700 text-white transition"
+          >
+            {submitName}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }

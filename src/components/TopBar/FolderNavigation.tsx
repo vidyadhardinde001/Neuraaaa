@@ -18,6 +18,7 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faArrowRight, faSyncAlt } from "@fortawesome/free-solid-svg-icons";
 import { useState } from "react";
+import SettingsModal from "../SettingsModal";
 
 export interface Props {
     onBackArrowClick: () => void;
@@ -29,6 +30,7 @@ export interface Props {
 
 export default function FolderNavigation({ onBackArrowClick, canGoBackward, onForwardArrowClick, canGoForward, onRefresh }: Props) {
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
@@ -78,7 +80,16 @@ export default function FolderNavigation({ onBackArrowClick, canGoBackward, onFo
                         className={isRefreshing ? "animate-spin" : ""} 
                     />
                 </button>
+
+                {/* Settings button */}
+                <button
+                    onClick={() => setShowSettings(true)}
+                    className="p-2 rounded-full transition-colors duration-200 bg-gray-200 text-gray-700 hover:bg-gray-300"
+                >
+                    ⚙
+                </button>
             </div>
+            {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
         </div>
     );
 }

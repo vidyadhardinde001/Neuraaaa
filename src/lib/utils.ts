@@ -6,12 +6,22 @@ export function cn(...inputs: any[]) {
 }
 
 // Format bytes (e.g., 1024 -> "1.0 KB")
-export function formatBytes(bytes: number | undefined | null): string {
+export function formatBytes(bytes: number | undefined | null, mode: 'binary' | 'decimal' = 'binary'): string {
   if (bytes == null || Number.isNaN(Number(bytes))) return '—';
   const b = Number(bytes);
   if (b === 0) return '0 B';
+
+  if (mode === 'decimal') {
+    const k = 1000;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(b) / Math.log(k));
+    const value = parseFloat((b / Math.pow(k, i)).toFixed(1));
+    return `${value} ${sizes[i]}`;
+  }
+
+  // binary
   const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const sizes = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
   const i = Math.floor(Math.log(b) / Math.log(k));
   const value = parseFloat((b / Math.pow(k, i)).toFixed(1));
   return `${value} ${sizes[i]}`;
