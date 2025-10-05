@@ -10,6 +10,8 @@
 import React, { useState } from 'react';
 import { openFile, renameFile } from '../../ipc';
 import { formatBytes, formatDate } from '../../lib/utils';
+import { useAppSelector } from '../../state/hooks';
+import { selectSettings } from '../../state/slices/settingsSlice';
 
 interface Props {
   content: any[];

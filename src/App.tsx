@@ -10,6 +10,7 @@ import FilePreview from "./components/FilePreview";
 import useNavigation from "./hooks/useNavigation";
 import SearchBar from "./components/TopBar/SearchBar";
 import {useAppDispatch, useAppSelector} from "./state/hooks";
+import { selectSettings } from "./state/slices/settingsSlice";
 import useContextMenu from "./hooks/useContextMenu";
 import ContextMenus from "./components/ContextMenus/ContextMenus";
 import {
@@ -105,8 +106,18 @@ function App() {
     }
   }
 
+  const settings = useAppSelector(selectSettings);
+
+  const rootClass = (() => {
+    const themeClass = settings.theme === 'dark' ? 'dark' : '';
+    const densityClass = settings.density === 'compact' ? 'density-compact' : settings.density === 'spacious' ? 'density-spacious' : '';
+    const invertClass = settings.invertText ? 'invert-text' : '';
+    const animClass = settings.animationsEnabled ? '' : 'no-animations';
+    return `${themeClass} ${densityClass} ${invertClass} ${animClass}`.trim();
+  })();
+
   return (
-    <div className="bg-[#ececec]" onClick={(e) => {
+    <div className={rootClass + " bg-[#ececec]"} style={{ ['--accent' as any]: settings.accentColor }} onClick={(e) => {
       handleCloseContextMenu(e);
 
       if (e.target instanceof HTMLElement) {
@@ -153,12 +164,12 @@ function App() {
                 </>
             )}
 
-            {/* Floating preview box at bottom-right */}
-            {selectedFile && (
+            {/* Floating preview box at bottom-right (only when enabled in settings) */}
+            {settings.showPreview && selectedFile && (
               <div className="fixed right-6 bottom-6 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                 <div className="flex items-center justify-between p-2 border-b border-gray-100">
                   <div className="text-sm text-gray-700">Preview</div>
-                  <button onClick={() => setSelectedFile(null)} className="text-gray-500 hover:text-gray-800">✕</button>
+                  <button onClick={() => setSelectedFile(null)} className="text-gray-500 hover:text-gray-800">15</button>
                 </div>
                 <div className="p-2">
                   <FilePreview file={selectedFile} />

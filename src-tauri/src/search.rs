@@ -8,7 +8,7 @@ use std::time::{Instant, SystemTime};
 use tauri::{State, Window};
 use serde::Serialize;
 
-const MINIMUM_SCORE: i16 = 20;
+const MINIMUM_SCORE: i16 = 100;
 
 /// Wrapper for sending child + fuzzy score to frontend
 #[derive(Serialize, Clone)]
@@ -28,12 +28,24 @@ fn passed_extension(filename: &str, extension: &String) -> bool {
 /// Gives a filename a fuzzy matcher score
 /// Returns 1000 if there is an exact match for prioritizing
 fn score_filename(matcher: &SkimMatcherV2, filename: &str, query: &str) -> i16 {
-    if filename.to_lowercase().contains(&query.to_lowercase()) {
-        1000 // fixed score if substring match
-    } else {
-        0 // no match
+    let filename_lower = filename.to_lowercase();
+    let query_lower = query.to_lowercase();
+
+    // Exact continuous substring of at least 5 chars
+    if query_lower.len() >= 5 && filename_lower.contains(&query_lower) {
+        return 1000;
     }
+
+    // Fuzzy match for other cases
+    let score = matcher.fuzzy_match(&filename_lower, &query_lower).unwrap_or(0) as i16;
+
+    if score < 150 { // set a threshold to ignore very weak fuzzy matches
+        return 0;
+    }
+
+    score
 }
+
 
 fn check_file(
     matcher: &SkimMatcherV2,

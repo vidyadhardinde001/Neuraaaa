@@ -3,11 +3,12 @@ import type { PayloadAction } from "@reduxjs/toolkit";
 import {ContextMenuType, DirectoryContentType} from "../../types";
 
 export interface ContextMenuState {
-    currentContextMenu: ContextMenuType,
-    contextMenuPayload?: any;
-    mouseX: number;
-    mouseY: number;
+  currentContextMenu: ContextMenuType | null;
+  contextMenuPayload: any;
+  mouseX: number;
+  mouseY: number;
 }
+
 
 export interface GeneralContextPayload {
     currentPath: string;
