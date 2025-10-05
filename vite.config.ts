@@ -4,6 +4,12 @@ import path from "path";
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  optimizeDeps: {
+    exclude: ['@tauri-apps/api'],
+  },
+  ssr: {
+    noExternal: ['@tauri-apps/api'],
+  },
   plugins: [react()],
   resolve: {
     alias: {
