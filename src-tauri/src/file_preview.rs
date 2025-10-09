@@ -10,7 +10,7 @@ use std::time::SystemTime;
 use chrono::{DateTime, Local};
 
 /// Maximum size for text preview (500 KB)
-const MAX_TEXT_PREVIEW: usize = 500_000;
+const MAX_TEXT_PREVIEW: usize = 2_000_000;
 
 #[command]
 pub fn preview_text_file(path: String) -> Result<String, String> {
