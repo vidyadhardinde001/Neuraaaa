@@ -10,9 +10,11 @@
 import React, { useState } from "react";
 import { openFile, renameFile } from "../../ipc";
 import { formatBytes, formatDate } from "../../lib/utils";
-import { useAppSelector } from "../../state/hooks";
+import { useAppSelector, useAppDispatch } from "../../state/hooks";
+import { selectContentIdx } from "../../state/slices/currentDirectorySlice";
 import { selectSettings } from "../../state/slices/settingsSlice";
 import { FileText, Wand2, Loader2, CheckCircle, AlertTriangle } from "lucide-react";
+
 
 interface Props {
   content: any[];
@@ -25,6 +27,7 @@ export function DirectoryContents({ content, onDirectoryClick, onFileSelect, sel
   const [modal, setModal] = useState<{ type: "summary" | "rename"; content: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [renamePath, setRenamePath] = useState<string | null>(null);
+  const dispatch = useAppDispatch();
 
   // Open a file
   const handleFileOpen = async (path: string) => {
@@ -247,6 +250,8 @@ export function DirectoryContents({ content, onDirectoryClick, onFileSelect, sel
                   aria-selected={selectedFile === path}
                   onClick={(e) => {
                     e.stopPropagation();
+                    // Update Redux selection index so header controls (rename/delete) enable
+                    dispatch(selectContentIdx(idx));
                     onFileSelect?.(isDir ? null : path);
                   }}
                   onDoubleClick={(e) => {

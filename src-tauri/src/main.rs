@@ -15,6 +15,7 @@ use search::search_directory;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, atomic::AtomicU64};
+use filesystem::folder_tree::read_dir_recursive;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct CachedPath {
@@ -61,6 +62,7 @@ async fn main() {
             create_directory,
             rename_file,
             delete_file,
+            read_dir_recursive,
             // duplicate detector
             duplicate_detector::find_duplicate_files,
             duplicate_detector::delete_files,
@@ -69,7 +71,8 @@ async fn main() {
             ,
             file_preview::preview_binary_file
             ,
-            file_preview::metadata_for_path
+            file_preview::metadata_for_path,
+            
         ])
 
         // shared application state

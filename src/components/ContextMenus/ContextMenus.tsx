@@ -4,9 +4,11 @@ import { useAppDispatch, useAppSelector } from "../../state/hooks";
 import InputModal from "../InputModal";
 import FileRenamerModal from "../FileRenamerModal";
 import DuplicateDetectorModal from "../DuplicateDetectorModal";
+import DuplicateSearchProgressModal from "../DuplicateSearchProgressModal";
 import { useState, useEffect } from "react";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
+import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import {
   DirectoryEntityContextPayload,
   GeneralContextPayload,
@@ -40,6 +42,9 @@ export default function ContextMenus() {
   const [duplicateModalShown, setDuplicateModalShown] = useState(false);
   const [duplicates, setDuplicates] = useState<any[]>([]);
   const [duplicateDeleteLoading, setDuplicateDeleteLoading] = useState(false);
+  const [duplicateScanning, setDuplicateScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState<any>(null);
+  const [unlistenFn, setUnlistenFn] = useState<UnlistenFn | null>(null);
 
   const directoryEntityPayload =
     contextMenuPayload as DirectoryEntityContextPayload;
@@ -58,7 +63,7 @@ export default function ContextMenus() {
 
       dispatch(
         updateContextMenu({
-          type: ContextMenuType.General,
+          currentContextMenu: ContextMenuType.General,
           mouseX: e.clientX,
           mouseY: e.clientY,
           contextMenuPayload: {
@@ -76,9 +81,26 @@ export default function ContextMenus() {
   // Fetch duplicates
   async function onFindDuplicates() {
     setDuplicateDeleteLoading(true);
+    setDuplicateScanning(true);
+    setScanProgress({ scanned: 0, candidates: 0, duplicates_found: 0 });
+
+    // subscribe to backend progress events
+    try {
+      const un = await listen("duplicate_progress", (e: any) => {
+        try {
+          const payload = e.payload as any;
+          setScanProgress(payload);
+        } catch (_) {}
+      });
+      setUnlistenFn(un);
+    } catch (_) {
+      // ignore listen errors
+    }
     try {
       const dir = generalPayload.currentPath;
       const result = await invoke<any[]>("find_duplicate_files", { dir });
+      // backend will have emitted final progress; we ensure UI gets final values
+      setScanProgress((p:any) => ({ ...(p||{}), duplicates_found: result?.length ?? 0 }));
       if (!result || result.length === 0) {
         alert("No duplicate files found.");
       } else {
@@ -89,6 +111,14 @@ export default function ContextMenus() {
       alert(e.toString());
     }
     setDuplicateDeleteLoading(false);
+    setDuplicateScanning(false);
+    // cleanup listener
+    try {
+      if (unlistenFn) {
+        unlistenFn();
+        setUnlistenFn(null);
+      }
+    } catch (_) {}
   }
 
   // New file
@@ -99,6 +129,11 @@ export default function ContextMenus() {
       const newDirectoryContent = createDirectoryContent("File", name, path);
       dispatch(addContent(newDirectoryContent));
       dispatch(selectContentIdx(0));
+
+      // ask the app to navigate back then forward to force re-navigation/refresh
+      try {
+        window.dispatchEvent(new CustomEvent('nav-back-forward'));
+      } catch (_) {}
     } catch (e) {
       alert(e);
     }
@@ -116,6 +151,11 @@ export default function ContextMenus() {
       );
       dispatch(addContent(newDirectoryContent));
       dispatch(selectContentIdx(0));
+
+      // ask the app to navigate back then forward to force re-navigation/refresh
+      try {
+        window.dispatchEvent(new CustomEvent('nav-back-forward'));
+      } catch (_) {}
     } catch (e) {
       alert(e);
     }
@@ -227,6 +267,19 @@ export default function ContextMenus() {
         shown={duplicateModalShown}
         setShown={setDuplicateModalShown}
         duplicates={duplicates}
+      />
+      <DuplicateSearchProgressModal
+        shown={duplicateScanning}
+        progress={scanProgress}
+        cancel={() => {
+          setDuplicateScanning(false);
+          try {
+            if (unlistenFn) {
+              unlistenFn();
+              setUnlistenFn(null);
+            }
+          } catch (_) {}
+        }}
       />
     </>
   );

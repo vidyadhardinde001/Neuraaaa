@@ -7,6 +7,7 @@ use std::fs::{self, File};
 use std::io::{BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, MutexGuard};
+use std::collections::HashMap;
 use std::time::Duration;
 use tokio::time;
 
@@ -36,17 +37,27 @@ impl FsEventHandler {
     fn get_from_cache<'a>(&self, state: &'a mut AppState) -> &'a mut VolumeCache {
         let mountpoint = self.mountpoint.to_string_lossy().to_string();
 
-        state.system_cache.get_mut(&mountpoint).unwrap_or_else(|| {
-            panic!(
-                "Failed to find mountpoint '{:?}' in cache.",
-                self.mountpoint
-            )
-        })
+        // Instead of panicking when a mountpoint is missing (which can happen
+        // if events arrive before the cache is fully populated), create an
+        // empty entry and return a mutable reference to it. This prevents
+        // panics and keeps the cache logic robust in the face of race
+        // conditions from filesystem watchers.
+        state
+            .system_cache
+            .entry(mountpoint)
+            .or_insert_with(HashMap::new)
     }
 
     pub fn handle_create(&self, kind: CreateKind, path: &Path) {
-        let state = &mut self.state_mux.lock().unwrap();
-        let current_volume = self.get_from_cache(state);
+        let mut guard = match self.state_mux.lock() {
+            Ok(g) => g,
+            Err(poison) => {
+                // Recover from poisoned mutex by taking inner value
+                eprintln!("Warning: AppState mutex poisoned while handling create. Recovering.");
+                poison.into_inner()
+            }
+        };
+        let current_volume = self.get_from_cache(&mut *guard);
 
         let filename = path.file_name().unwrap().to_string_lossy().to_string();
         let file_type = match kind {
@@ -66,8 +77,14 @@ impl FsEventHandler {
     }
 
     pub fn handle_delete(&self, path: &Path) {
-        let state = &mut self.state_mux.lock().unwrap();
-        let current_volume = self.get_from_cache(state);
+        let mut guard = match self.state_mux.lock() {
+            Ok(g) => g,
+            Err(poison) => {
+                eprintln!("Warning: AppState mutex poisoned while handling delete. Recovering.");
+                poison.into_inner()
+            }
+        };
+        let current_volume = self.get_from_cache(&mut *guard);
 
         let filename = path.file_name().unwrap().to_string_lossy().to_string();
         current_volume.remove(&filename);
@@ -75,8 +92,14 @@ impl FsEventHandler {
 
     /// Removes file from cache, when `handle_rename_to` is called a new file is added to the cache in place.
     pub fn handle_rename_from(&mut self, old_path: &Path) {
-        let state = &mut self.state_mux.lock().unwrap();
-        let current_volume = self.get_from_cache(state);
+        let mut guard = match self.state_mux.lock() {
+            Ok(g) => g,
+            Err(poison) => {
+                eprintln!("Warning: AppState mutex poisoned while handling rename_from. Recovering.");
+                poison.into_inner()
+            }
+        };
+        let current_volume = self.get_from_cache(&mut *guard);
 
         let old_path_string = old_path.to_string_lossy().to_string();
         let old_filename = old_path.file_name().unwrap().to_string_lossy().to_string();
@@ -95,8 +118,14 @@ impl FsEventHandler {
 
     /// Adds new file name & path to cache.
     pub fn handle_rename_to(&self, new_path: &Path) {
-        let state = &mut self.state_mux.lock().unwrap();
-        let current_volume = self.get_from_cache(state);
+        let mut guard = match self.state_mux.lock() {
+            Ok(g) => g,
+            Err(poison) => {
+                eprintln!("Warning: AppState mutex poisoned while handling rename_to. Recovering.");
+                poison.into_inner()
+            }
+        };
+        let current_volume = self.get_from_cache(&mut *guard);
 
         let filename = new_path.file_name().unwrap().to_string_lossy().to_string();
         let file_type = if new_path.is_dir() { DIRECTORY } else { FILE };
@@ -134,22 +163,34 @@ pub fn run_cache_interval(state_mux: &StateSafe) {
 
     tokio::spawn(async move {
         // We use tokio spawn because async closures with std spawn is unstable
-        let mut interval = time::interval(Duration::from_secs(60));
+        let mut interval = time::interval(Duration::from_secs(1200));
         interval.tick().await; // Wait 30 seconds before doing first re-cache
 
         loop {
             interval.tick().await;
 
-            let guard = &mut state_clone.lock().unwrap();
-            save_to_cache(guard);
+            let mut guard = match state_clone.lock() {
+                Ok(g) => g,
+                Err(poison) => {
+                    eprintln!("Warning: AppState mutex poisoned in cache interval. Recovering.");
+                    poison.into_inner()
+                }
+            };
+            save_to_cache(&mut guard);
         }
     });
 }
 
 /// This takes in an Arc<Mutex<AppState>> and calls `save_to_cache` after locking it.
 pub fn save_system_cache(state_mux: &StateSafe) {
-    let state = &mut state_mux.lock().unwrap();
-    save_to_cache(state);
+    let mut guard = match state_mux.lock() {
+        Ok(g) => g,
+        Err(poison) => {
+            eprintln!("Warning: AppState mutex poisoned while saving system cache. Recovering.");
+            poison.into_inner()
+        }
+    };
+    save_to_cache(&mut guard);
 }
 
 /// Gets the cache from the state (in memory), encodes and saves it to the cache file path.
@@ -173,7 +214,13 @@ fn save_to_cache(state: &mut MutexGuard<AppState>) {
 /// Reads and decodes the cache file and stores it in memory for quick access.
 /// Returns false if the cache was unable to deserialize.
 pub fn load_system_cache(state_mux: &StateSafe) -> bool {
-    let state = &mut state_mux.lock().expect("Failed to lock mutex");
+    let mut guard = match state_mux.lock() {
+        Ok(g) => g,
+        Err(poison) => {
+            eprintln!("Warning: AppState mutex poisoned while loading cache. Recovering.");
+            poison.into_inner()
+        }
+    };
 
     let cache_file = File::open(&CACHE_FILE_PATH[..]).expect("Failed to open cache file");
     let reader = BufReader::new(cache_file);
@@ -181,7 +228,7 @@ pub fn load_system_cache(state_mux: &StateSafe) -> bool {
     if let Ok(decompressed) = zstd::decode_all(reader) {
         let deserialize_result = serde_bencode::from_bytes(&decompressed[..]);
         if let Ok(system_cache) = deserialize_result {
-            state.system_cache = system_cache;
+            guard.system_cache = system_cache;
             return true;
         }
     }

@@ -6,6 +6,8 @@ import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { formatBytes, formatDate } from "../lib/utils";
 import { Move, GripVertical, X, Minus, Square } from "lucide-react";
 
+
+
 interface FilePreviewProps {
   file: string | null;
 }

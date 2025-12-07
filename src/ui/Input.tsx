@@ -12,6 +12,7 @@ interface Props {
     onChange?: (e: ChangeEvent<HTMLInputElement>) => any;
     placeholder?: string;
     onSubmit?: () => any;
+    autoFocus?: boolean;
     size: InputSize;
     className?: string;
     disabled?: boolean;
@@ -19,7 +20,7 @@ interface Props {
     max?: string;
 }
 
-export default function Input({ value, onChange, setValue, placeholder, onSubmit, size, className, disabled, min, max }: Props) {
+export default function Input({ value, onChange, setValue, placeholder, onSubmit, size, className, disabled, min, max, autoFocus }: Props) {
     let styles = `outline-none bg-darker border-gray-500 border-1 rounded-md focus:border-accent p-2 disabled:opacity-25 ${className + " " || ""}`;
 
     switch (size) {
@@ -40,6 +41,7 @@ export default function Input({ value, onChange, setValue, placeholder, onSubmit
        <input
            disabled={disabled}
            value={value}
+           autoFocus={autoFocus}
            onChange={(e) => setValue ? setValue(e.target.value) : onChange ? onChange(e) : undefined}
            className={styles}
            placeholder={placeholder}

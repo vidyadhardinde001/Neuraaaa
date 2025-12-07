@@ -2,6 +2,7 @@ pub mod cache;
 pub mod explorer;
 mod fs_utils;
 pub mod volume;
+pub mod folder_tree;
 
 pub const DIRECTORY: &str = "directory";
 pub const FILE: &str = "file";

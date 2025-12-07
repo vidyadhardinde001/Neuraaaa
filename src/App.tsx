@@ -98,6 +98,36 @@ function App() {
 
   const [handleMainContextMenu, handleCloseContextMenu] = useContextMenu(dispatch, pathHistory[historyPlace]);
 
+  // Listen for 'nav-back-forward' events and perform a back -> forward navigation to refresh view
+  useEffect(() => {
+    const onNavBackForward = async () => {
+      try {
+        // If we can go back then forward, do that. Otherwise trigger a simple refresh.
+        if (canGoBackward()) {
+          onBackArrowClick();
+          // small delay to let state update
+          setTimeout(() => {
+            onForwardArrowClick();
+          }, 80);
+        } else if (canGoForward()) {
+          // We can only go forward — just do forward then back
+          onForwardArrowClick();
+          setTimeout(() => {
+            onBackArrowClick();
+          }, 80);
+        } else {
+          // fallback: refresh current view
+          handleRefresh().catch(console.error);
+        }
+      } catch (e) {
+        console.error('nav-back-forward handler error', e);
+      }
+    };
+
+    window.addEventListener('nav-back-forward', onNavBackForward as EventListener);
+    return () => window.removeEventListener('nav-back-forward', onNavBackForward as EventListener);
+  }, [historyPlace, pathHistory, onBackArrowClick, onForwardArrowClick]);
+
   async function handleRefresh() {
     if (pathHistory[historyPlace] === "") {
       await getVolumes();
@@ -137,6 +167,7 @@ function App() {
             onForwardArrowClick={onForwardArrowClick}
             canGoForward={canGoForward()}
             onRefresh={handleRefresh}
+          currentDirectoryPath={pathHistory[historyPlace]}
         />
 
         <div className="pb-5">

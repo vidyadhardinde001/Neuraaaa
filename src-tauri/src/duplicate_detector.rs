@@ -2,6 +2,10 @@ use std::collections::HashMap;
 use std::fs;
 use std::io::{self, Read};
 use std::path::PathBuf;
+use walkdir::WalkDir;
+use tauri::Window;
+use tauri::Emitter;
+use rayon::prelude::*;
 use sha2::{Sha256, Digest};
 use tauri::command;
 
@@ -11,11 +15,17 @@ pub struct DuplicateGroup {
     pub files: Vec<String>,
 }
 
-/// Compute SHA-256 hash of a file
+#[derive(Debug, serde::Serialize)]
+pub struct DuplicateProgress {
+    pub scanned: usize,
+    pub candidates: usize,
+    pub duplicates_found: usize,
+}
+
 fn file_hash(path: &PathBuf) -> io::Result<String> {
     let mut file = fs::File::open(path)?;
     let mut hasher = Sha256::new();
-    let mut buffer = [0u8; 8192]; // larger buffer for fewer syscalls
+    let mut buffer = [0u8; 8192]; 
     loop {
         let n = file.read(&mut buffer)?;
         if n == 0 {
@@ -26,51 +36,68 @@ fn file_hash(path: &PathBuf) -> io::Result<String> {
     Ok(format!("{:x}", hasher.finalize()))
 }
 
-/// Step 1: Group by file size
-/// Step 2: Hash only files that share the same size
 #[command]
-pub fn find_duplicate_files(dir: String) -> Result<Vec<DuplicateGroup>, String> {
+pub fn find_duplicate_files(window: Window, dir: String) -> Result<Vec<DuplicateGroup>, String> {
     let mut size_map: HashMap<u64, Vec<PathBuf>> = HashMap::new();
 
-    // Only scan files directly in the given directory (not recursively)
-    let read_dir = match fs::read_dir(&dir) {
-        Ok(rd) => rd,
-        Err(e) => return Err(format!("Failed to read directory: {}", e)),
-    };
-    for entry in read_dir {
+    let mut scanned: usize = 0;
+    for entry in WalkDir::new(&dir).into_iter() {
         let entry = match entry {
             Ok(e) => e,
             Err(_) => continue,
         };
-        let path = entry.path();
+        let path = entry.path().to_path_buf();
         if path.is_file() {
-            if let Ok(metadata) = entry.metadata() {
+            scanned += 1;
+            if let Ok(metadata) = fs::metadata(&path) {
                 let size = metadata.len();
                 size_map.entry(size).or_default().push(path);
+            }
+
+            if scanned % 250 == 0 {
+                let progress = DuplicateProgress {
+                    scanned: scanned as usize,
+                    candidates: size_map.iter().map(|(_, v)| v.len()).sum(),
+                    duplicates_found: 0, 
+                };
+
+                let _ = window.emit("duplicate_progress", &progress);
             }
         }
     }
 
-    // Now, only hash files that share the same size
     let mut hash_map: HashMap<String, Vec<String>> = HashMap::new();
 
     for (_size, files) in size_map {
         if files.len() < 2 {
-            continue; // skip unique-sized files
+            continue;
         }
-
-        for path in files {
-            match file_hash(&path) {
-                Ok(hash) => {
-                    hash_map.entry(hash).or_default().push(path.to_string_lossy().to_string());
+        let results: Vec<(String, Option<String>)> = files
+            .par_iter()
+            .map(|p| {
+                match file_hash(p) {
+                    Ok(h) => (p.to_string_lossy().to_string(), Some(h)),
+                    Err(_) => (p.to_string_lossy().to_string(), None),
                 }
-                Err(_) => continue,
+            })
+            .collect();
+
+        for (path_str, maybe_hash) in results {
+            if let Some(hash) = maybe_hash {
+                hash_map.entry(hash).or_default().push(path_str);
             }
         }
+
+        let duplicates_count: usize = hash_map.values().filter(|v| v.len() > 1).count();
+        let progress = DuplicateProgress {
+            scanned: scanned as usize,
+            candidates: hash_map.values().map(|v| v.len()).sum(),
+            duplicates_found: duplicates_count,
+        };
+        let _ = window.emit("duplicate_progress", &progress);
     }
 
-    // Collect only duplicates
-    let duplicates = hash_map
+    let duplicates: Vec<DuplicateGroup> = hash_map
         .into_iter()
         .filter_map(|(hash, files)| {
             if files.len() > 1 {
@@ -81,10 +108,17 @@ pub fn find_duplicate_files(dir: String) -> Result<Vec<DuplicateGroup>, String> 
         })
         .collect();
 
+    let final_progress = DuplicateProgress {
+        scanned: scanned as usize,
+        candidates: duplicates.iter().map(|g: &DuplicateGroup| g.files.len()).sum(),
+        duplicates_found: duplicates.len(),
+    };
+    let _ = window.emit("duplicate_progress", &final_progress);
+
     Ok(duplicates)
 }
 
-/// Deletes multiple files safely
+
 #[command]
 pub fn delete_files(files: Vec<String>) -> Result<(), String> {
     for file in files {

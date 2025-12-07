@@ -39,13 +39,24 @@ export default function DuplicateDetectorModal({ shown, setShown, duplicates, on
     onDeleted?.(filesToDelete);
   }
 
+  const totalGroups = duplicates?.length ?? 0;
+  const totalDuplicateFiles = duplicates?.reduce((acc: number, g: any) => acc + Math.max(0, g.files.length - 1), 0) ?? 0;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-[80%] max-h-[40vh] overflow-y-auto">
-        <h2 className="text-2xl font-semibold mb-4">Duplicate Files Found</h2>
-        <p className="text-sm text-gray-500 mb-4">
-          Select files to delete. For each group, the first file is kept by default.
-        </p>
+      <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-[80%] max-h-[60vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-2xl font-semibold">Duplicate Files Found</h2>
+            <p className="text-sm text-gray-500">Select files to delete. For each group, the first file is kept by default.</p>
+          </div>
+          <div className="text-right">
+            <div className="text-sm text-gray-400">Groups</div>
+            <div className="text-lg font-semibold">{totalGroups}</div>
+            <div className="text-sm text-gray-400">Duplicate files</div>
+            <div className="text-lg font-semibold text-red-600">{totalDuplicateFiles}</div>
+          </div>
+        </div>
 
         {duplicates.length === 0 ? (
           <p className="text-gray-600 text-center py-8">No duplicate files found.</p>
