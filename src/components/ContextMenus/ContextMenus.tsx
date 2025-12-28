@@ -219,6 +219,7 @@ export default function ContextMenus() {
             { name: "New File", onClick: () => setNewFileShown(true) },
             { name: "New Folder", onClick: () => setNewDirectoryShown(true) },
             { name: "Smart Rename Files", onClick: () => setFileRenamerShown(true) },
+            { name: "Compress", onClick: () => setCompressFileShown(true) },
             {
               name: duplicateDeleteLoading ? "Scanning..." : "Find Duplicates",
               onClick: onFindDuplicates,

@@ -209,7 +209,7 @@ export default function SearchBar({
             value={directoryInput}
             setValue={setDirectoryInput}
             placeholder="Enter directory path"
-            className="w-64 pl-3 pr-3 py-2 border border-gray-300 rounded-lg"
+            className="w-64 pl-3 pr-3 py-2 border border-gray-400 rounded-lg"
             onSubmit={onGoToDirectory}
             size={InputSize.Tiny}
           />
@@ -217,46 +217,7 @@ export default function SearchBar({
         </div>
       </div>
 
-      {/* Small floating stats window (right side) — visible only when a volume is selected */}
-      {currentVolume && currentVolume !== "" && (
-        <div className="fixed m-3 mt-3 right-0 top-[200px] w-[400px] p-2 bg-white border border-gray-200 rounded shadow-md text-xs z-40">
-          <div className="flex items-center justify-between mb-1">
-            <div className="text-sm font-semibold text-gray-700">Search</div>
-            <div className={`text-xs ${isSearching ? 'text-orange-500' : 'text-gray-400'}`}>
-              {isSearching ? 'running' : 'last'}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between py-1">
-            <div className="text-[11px] text-gray-500">Query time</div>
-            <div className="text-blue-400 font-medium text-sm">{elapsedTime > 0 ? (elapsedTime/1000).toFixed(2) + 's' : '—'}</div>
-          </div>
-
-          <div className="flex items-center justify-between py-1">
-            <div className="text-[11px] text-gray-500">Files scanned</div>
-            <div className="text-blue-400 font-medium text-sm">{scannedCount}</div>
-          </div>
-
-          <div className="flex items-center justify-between py-1">
-            <div className="text-[11px] text-gray-500">Matches</div>
-            <div className=" text-blue-400 font-medium text-sm">{matchedCount}</div>
-          </div>
-
-          {/* small breakdown by type (file / directory) — keep it compact */}
-          {Object.keys(countsByType).length > 0 && (
-            <div className="mt-2 text-[11px] text-gray-500 border-t pt-2">
-              <div className="font-medium text-[11px] text-gray-700 mb-1">By type</div>
-              <div className="flex gap-2 flex-wrap">
-                {Object.entries(countsByType).map(([t, c]) => (
-                  <div key={t} className="px-2 py-0.5 bg-gray-100 rounded text-[11px] text-gray-700">
-                    {t}: {c}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+     
 
       {/* Results */}
       {/* <div className="max-h-80 overflow-y-auto">

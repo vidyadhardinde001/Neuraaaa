@@ -6,16 +6,21 @@ mod filesystem;
 mod search;
 mod duplicate_detector;
 mod file_preview;
+mod vault;
+mod content_scanner;
 
 use filesystem::explorer::{
     create_directory, create_file, delete_file, open_directory, open_file, rename_file,
 };
 use filesystem::volume::get_volumes;
 use search::search_directory;
+use vault::{vault_create, vault_open, vault_lock, vault_list_entries, vault_import_file, vault_export_file, vault_delete_entry, vault_generate_recovery_codes};
+use content_scanner::scan_directory_for_sensitive_files;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, atomic::AtomicU64};
 use filesystem::folder_tree::read_dir_recursive;
+use vault::VaultSession;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct CachedPath {
@@ -31,6 +36,7 @@ pub type VolumeCache = HashMap<String, Vec<CachedPath>>;
 pub struct AppState {
     pub system_cache: HashMap<String, VolumeCache>,
     pub active_search_id: AtomicU64,
+    pub vault_sessions: HashMap<String, VaultSession>,
 }
 
 impl AppState {
@@ -38,6 +44,7 @@ impl AppState {
         Self {
             system_cache: HashMap::new(),
             active_search_id: AtomicU64::new(0),
+            vault_sessions: HashMap::new(),
         }
     }
 }
@@ -73,6 +80,18 @@ async fn main() {
             ,
             file_preview::metadata_for_path,
             
+            // vault
+            vault_create,
+            vault_open,
+            vault_lock,
+            vault_list_entries,
+            vault_import_file,
+            vault_export_file,
+            vault_delete_entry,
+            vault_generate_recovery_codes,
+            
+            // content scanner
+            scan_directory_for_sensitive_files,
         ])
 
         // shared application state

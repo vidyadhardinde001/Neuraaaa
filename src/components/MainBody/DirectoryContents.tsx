@@ -21,9 +21,10 @@ interface Props {
   onDirectoryClick: (filePath: string) => void;
   onFileSelect?: (filePath: string | null) => void;
   selectedFile?: string | null;
+  onFolderSelect?: (folderPath: string | null) => void;
 }
 
-export function DirectoryContents({ content, onDirectoryClick, onFileSelect, selectedFile }: Props) {
+export function DirectoryContents({ content, onDirectoryClick, onFileSelect, selectedFile, onFolderSelect }: Props) {
   const [modal, setModal] = useState<{ type: "summary" | "rename"; content: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [renamePath, setRenamePath] = useState<string | null>(null);
@@ -243,115 +244,120 @@ export function DirectoryContents({ content, onDirectoryClick, onFileSelect, sel
 
               const path = meta.path || "";
 
+
               return (
-                <tr
-                  key={idx}
-                  role="row"
-                  aria-selected={selectedFile === path}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    // Update Redux selection index so header controls (rename/delete) enable
-                    dispatch(selectContentIdx(idx));
-                    onFileSelect?.(isDir ? null : path);
-                  }}
-                  onDoubleClick={(e) => {
-                    e.stopPropagation();
-                    if (isDir) {
-                      onDirectoryClick(path);
-                      onFileSelect?.(null);
-                    } else {
-                      handleFileOpen(path);
-                    }
-                  }}
-                  className={`group cursor-pointer transition-all duration-150 ${
-                    selectedFile === path 
-                      ? "bg-blue-50 border-l-4 border-l-blue-500" 
-                      : "hover:bg-gray-50 border-l-4 border-l-transparent"
-                  }`}
-                >
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-3">
-                      <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
-                        isDir ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-600"
-                      }`}>
-                        <span className="text-sm font-medium">
-                          {isDir ? "📁" : "📄"}
-                        </span>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className={`text-sm font-medium truncate ${
-                          selectedFile === path ? "text-blue-800" : "text-gray-900"
+                <>
+                  <tr
+                    key={`row-${idx}`}
+                    role="row"
+                    aria-selected={selectedFile === path}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      dispatch(selectContentIdx(idx));
+                      onFileSelect?.(isDir ? null : path);
+
+                      // Call folder select callback when clicking a directory
+                      if (isDir) {
+                        onFolderSelect?.(path);
+                      }
+                    }}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation();
+                      if (isDir) {
+                        onDirectoryClick(path);
+                        onFileSelect?.(null);
+                      } else {
+                        handleFileOpen(path);
+                      }
+                    }}
+                    className={`group cursor-pointer transition-all duration-150 ${
+                      selectedFile === path 
+                        ? "bg-blue-50 border-l-4 border-l-blue-500" 
+                        : "hover:bg-gray-50 border-l-4 border-l-transparent"
+                    }` }
+                  >
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
+                          isDir ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-600"
                         }`}>
-                          {meta.name}
+                          <span className="text-sm font-medium">
+                            {isDir ? "📁" : "📄"}
+                          </span>
                         </div>
-                        <div className="text-xs text-gray-500 mt-0.5">
-                          {isDir ? "Folder" : "File"}
+                        <div className="min-w-0 flex-1">
+                          <div className={`text-sm font-medium truncate ${
+                            selectedFile === path ? "text-blue-800" : "text-gray-900"
+                          }`}>
+                            {meta.name}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-0.5">
+                            {isDir ? "Folder" : "File"}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 text-sm text-gray-600 whitespace-nowrap">
-                    {isDir ? "—" : formatBytes(meta.size)}
-                  </td>
-                  <td className="py-3 px-4 text-sm text-gray-600 whitespace-nowrap">
-                    {meta.modified
-                      ? formatDate(meta.modified)
-                      : meta.created
-                      ? formatDate(meta.created)
-                      : "—"}
-                  </td>
+                    </td>
+                    <td className="py-3 px-4 text-sm text-gray-600 whitespace-nowrap">
+                      {isDir ? "—" : formatBytes(meta.size)}
+                    </td>
+                    <td className="py-3 px-4 text-sm text-gray-600 whitespace-nowrap">
+                      {meta.modified
+                        ? formatDate(meta.modified)
+                        : meta.created
+                        ? formatDate(meta.created)
+                        : "—"}
+                    </td>
 
-                  {/* AI ACTIONS */}
-                  <td className="py-3 px-4">
-                    {!isDir && (
-                      <div className="flex gap-2 items-center opacity-100 group-hover:opacity-100 transition-opacity duration-200">
-                        {/* AI Summary Button */}
-                        <button
-                          title="Generate AI Summary"
-                          disabled={loading}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleAISummary(path);
-                          }}
-                          className={`flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 border
-                            ${
-                              loading
-                                ? "bg-gray-100 border-gray-300 cursor-not-allowed"
-                                : "bg-white border-gray-300 hover:bg-gray-50 hover:border-gray-400 text-gray-600 hover:text-gray-800 shadow-xs"
-                            }`}
-                        >
-                          {loading ? (
-                            <Loader2 className="animate-spin h-3.5 w-3.5" />
-                          ) : (
-                            <FileText className="h-3.5 w-3.5" />
-                          )}
-                        </button>
+                    {/* AI ACTIONS */}
+                    <td className="py-3 px-4">
+                      {!isDir && (
+                        <div className="flex gap-2 items-center opacity-100 group-hover:opacity-100 transition-opacity duration-200">
+                          {/* AI Summary Button */}
+                          <button
+                            title="Generate AI Summary"
+                            disabled={loading}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAISummary(path);
+                            }}
+                            className={`flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 border
+                              ${
+                                loading
+                                  ? "bg-gray-100 border-gray-300 cursor-not-allowed"
+                                  : "bg-white border-gray-300 hover:bg-gray-50 hover:border-gray-400 text-gray-600 hover:text-gray-800 shadow-xs"
+                              }`}>
+                            {loading ? (
+                              <Loader2 className="animate-spin h-3.5 w-3.5" />
+                            ) : (
+                              <FileText className="h-3.5 w-3.5" />
+                            )}
+                          </button>
 
-                        {/* AI Rename Button */}
-                        <button
-                          title="Get AI Rename Suggestion"
-                          disabled={loading}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleAIRename(path);
-                          }}
-                          className={`flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 border
-                            ${
-                              loading
-                                ? "bg-gray-100 border-gray-300 cursor-not-allowed"
-                                : "bg-white border-gray-300 hover:bg-gray-50 hover:border-gray-400 text-gray-600 hover:text-gray-800 shadow-xs"
-                            }`}
-                        >
-                          {loading ? (
-                            <Loader2 className="animate-spin h-3.5 w-3.5" />
-                          ) : (
-                            <Wand2 className="h-3.5 w-3.5" />
-                          )}
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
+                          {/* AI Rename Button */}
+                          <button
+                            title="Get AI Rename Suggestion"
+                            disabled={loading}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAIRename(path);
+                            }}
+                            className={`flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 border
+                              ${
+                                loading
+                                  ? "bg-gray-100 border-gray-300 cursor-not-allowed"
+                                  : "bg-white border-gray-300 hover:bg-gray-50 hover:border-gray-400 text-gray-600 hover:text-gray-800 shadow-xs"
+                              }`}>
+                            {loading ? (
+                              <Loader2 className="animate-spin h-3.5 w-3.5" />
+                            ) : (
+                              <Wand2 className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                </>
               );
             })}
           </tbody>

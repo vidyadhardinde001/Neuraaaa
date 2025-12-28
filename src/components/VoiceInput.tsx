@@ -127,9 +127,9 @@ export default function VoiceInput({ onCommandReceived }: VoiceInputProps) {
         onClick={toggleListening}
         title={isListening ? 'Stop listening' : 'Start voice command'}
         className={`
-          relative p-4 rounded-full transition-all duration-300
+          relative p-3 rounded-full transition-all duration-300
           shadow-lg hover:shadow-xl active:scale-95
-          bg-gradient-to-br from-blue-500 to-purple-600
+          bg-gradient-to-br from-blue-500 to-blue-600
           text-white
           ${isPulsing ? 'animate-glow' : ''}
           group
@@ -364,8 +364,8 @@ export default function VoiceInput({ onCommandReceived }: VoiceInputProps) {
                           className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/50 transition-all"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="p-1.5 rounded-md bg-gradient-to-br from-blue-50 to-purple-50">
-                              <span className="text-xs font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                            <div className="p-1 rounded-md bg-gradient-to-br from-blue-50 to-purple-50">
+                              <span className="text-xs font-bold bg-blue-500 bg-clip-text text-transparent">
                                 {pattern.action.charAt(0).toUpperCase()}
                               </span>
                             </div>

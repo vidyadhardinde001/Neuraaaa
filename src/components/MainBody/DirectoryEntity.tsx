@@ -6,6 +6,7 @@
  * - Handles navigation (double-click → open directory or file).
  * - Handles right-click (context menu with actions).
  * - Highlights selected entity in UI.
+ * - Supports drag and drop functionality.
  *
  * Dependencies (communicates with):
  * - ../../types → ContextMenuType, DirectoryContentType, DirectoryEntityType
@@ -22,7 +23,7 @@
  */
 
 
-import { MouseEvent, MouseEventHandler, useRef } from "react";
+import { MouseEvent, MouseEventHandler, useRef, useState } from "react";
 import { ContextMenuType, DirectoryContentType, DirectoryEntityType } from "../../types";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFile, faFolder, faFileAlt, faFileImage, faFilePdf, faFileAudio, faFileVideo, faFileCode, faFileArchive } from "@fortawesome/free-solid-svg-icons";
@@ -130,6 +131,7 @@ export default function DirectoryEntity({ idx, name, path, type, onDoubleClick, 
     const dispatch = useAppDispatch();
     const selectedContentIdx = useAppSelector(selectCurrentSelectedContentIdx);
     const isSelected = selectedContentIdx === idx;
+    const [isDragging, setIsDragging] = useState(false);
 
     function handleContextMenu(e: MouseEvent<HTMLButtonElement>) {
         e.preventDefault();
@@ -142,6 +144,20 @@ export default function DirectoryEntity({ idx, name, path, type, onDoubleClick, 
             contextMenuPayload: { fileName: name, filePath: path, type } as DirectoryEntityContextPayload,
         }));
     }
+
+    const handleDragStart = (e: React.DragEvent<HTMLButtonElement>) => {
+        e.stopPropagation();
+        setIsDragging(true);
+        // Store the file/folder path and name in dataTransfer
+        e.dataTransfer.effectAllowed = 'copy';
+        e.dataTransfer.setData('application/x-file-path', path);
+        e.dataTransfer.setData('application/x-file-name', name);
+        e.dataTransfer.setData('application/x-file-type', type);
+    };
+
+    const handleDragEnd = () => {
+        setIsDragging(false);
+    };
 
     const icon = type === "Directory" ? faFolder : getFileIcon(name);
     const iconColor = type === "Directory" ? "#FFD54F" : "#9CA3AF";
@@ -157,12 +173,17 @@ export default function DirectoryEntity({ idx, name, path, type, onDoubleClick, 
         >
             <button
                 id={DIRECTORY_ENTITY_ID}
+                draggable
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
                 onContextMenu={handleContextMenu}
                 className={`w-full p-3 flex items-center space-x-3 rounded-lg transition-all duration-200 ${
-                    isSelected 
+                    isDragging
+                        ? 'opacity-50 bg-blue-200'
+                        : isSelected 
                         ? 'bg-blue-50 text-blue-700' 
                         : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
-                } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                } focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-move`}
                 onDoubleClick={(e) => {
                     onDoubleClick(e);
                     dispatch(unselectDirectoryContents());
@@ -212,7 +233,9 @@ export default function DirectoryEntity({ idx, name, path, type, onDoubleClick, 
 
             {/* Hover effect overlay */}
             <div className={`absolute inset-0 rounded-lg pointer-events-none transition-all duration-200 ${
-                isSelected 
+                isDragging
+                    ? 'ring-2 ring-blue-400'
+                    : isSelected 
                     ? 'ring-2 ring-blue-400' 
                     : 'group-hover:ring-1 group-hover:ring-gray-200'
             }`}></div>

@@ -22,8 +22,8 @@ export default function FilePreview({ file }: FilePreviewProps) {
   // Window state
   const [isMinimized, setIsMinimized] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
-  const [position, setPosition] = useState({ x: 1110, y: 250 });
-  const [size, setSize] = useState({ width: 400, height: 400 });
+  const [position, setPosition] = useState({ x: 870, y: 370 });
+  const [size, setSize] = useState({ width: 60, height: 100 });
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -327,8 +327,8 @@ export default function FilePreview({ file }: FilePreviewProps) {
         top: position.y,
         width: isMaximized ? 'calc(100vw - 40px)' : size.width,
         height: isMaximized ? 'calc(100vh - 40px)' : size.height,
-        minWidth: '400px',
-        minHeight: '300px'
+        minWidth: '290px',
+        minHeight: '400px'
       }}
       onMouseDown={(e) => {
         e.stopPropagation(); // 🧱 Prevent background click clearing file
@@ -353,21 +353,21 @@ export default function FilePreview({ file }: FilePreviewProps) {
         <div className="flex items-center space-x-1 no-drag">
           <button
             onClick={handleMinimize}
-            className="p-1.5 hover:bg-gray-200 rounded transition-colors"
+            className="p-1.5 bg-gray-200 rounded transition-colors"
             title="Minimize"
           >
             <Minus className="w-3 h-3" />
           </button>
           <button
             onClick={handleMaximize}
-            className="p-1.5 hover:bg-gray-200 rounded transition-colors"
+            className="p-1.5 bg-gray-200 rounded transition-colors"
             title={isMaximized ? "Restore" : "Maximize"}
           >
             <Square className="w-3 h-3" />
           </button>
           <button
             onClick={handleClose}
-            className="p-1.5 hover:bg-red-100 hover:text-red-600 rounded transition-colors"
+            className="p-1.5 text-red-600 rounded transition-colors"
             title="Close"
           >
             <X className="w-3 h-3" />
