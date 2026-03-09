@@ -189,7 +189,7 @@ export default function ContextMenus() {
   // Delete single file/folder
   async function onDelete() {
     const result = await confirm(
-      `Are you sure you want to delete "${directoryEntityPayload.fileName}"?`
+      `Move "${directoryEntityPayload.fileName}" to Recycle Bin?`
     );
     if (!result) return;
 

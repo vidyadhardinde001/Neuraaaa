@@ -9,7 +9,7 @@ import {DirectoryContents} from "./components/MainBody/DirectoryContents";
 import FilePreview from "./components/FilePreview";
 import FileMetadata from "./components/FileMetadata";
 import FolderTreeSidebar from "./components/FolderTreeSidebar";
-import VaultTrigger from "./components/VaultTrigger";
+// VaultTrigger removed — vault is opened via nav bar icon
 import VaultModal from "./components/VaultModal";
 import useNavigation from "./hooks/useNavigation";
 import { TabBar } from "./components/TabBar";
@@ -302,7 +302,6 @@ function App() {
       setSelectedFile(null);
     }} onContextMenu={handleMainContextMenu}>
       <ContextMenus />
-      <VaultTrigger onTrigger={() => setVaultModalOpen(true)} />
       <VaultModal isOpen={vaultModalOpen} onClose={() => setVaultModalOpen(false)} />
 
       <div className="flex flex-col h-screen">
@@ -320,6 +319,7 @@ function App() {
               currentDirectoryPath={pathHistory[historyPlace]}
               currentVolume={currentVolume}
               setSearchResults={setSearchResults}
+              onVaultOpen={() => setVaultModalOpen(true)}
             />
 
             <div className="pb-5">

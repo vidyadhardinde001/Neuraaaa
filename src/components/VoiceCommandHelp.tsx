@@ -52,6 +52,39 @@ const COMMAND_EXAMPLES: CommandExample[] = [
       'rename myfile to archive',
     ],
   },
+  {
+    category: 'Search Files',
+    examples: [
+      'search for documents',
+      'find pdf files',
+      'look for backup',
+      'search reports',
+      'locate myfile',
+      'find files named archive',
+    ],
+  },
+  {
+    category: 'Copy Files/Folders',
+    examples: [
+      'copy file myfile dot txt',
+      'duplicate the report',
+      'copy file data dot json',
+      'clone archive',
+      'copy folder projects',
+      'duplicate directory backups',
+    ],
+  },
+  {
+    category: 'Paste Files/Folders',
+    examples: [
+      'paste',
+      'paste here',
+      'paste the file',
+      'insert file here',
+      'place the file',
+      'apply here',
+    ],
+  },
 ];
 
 export default function VoiceCommandHelp() {

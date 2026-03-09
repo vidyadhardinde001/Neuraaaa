@@ -11,10 +11,11 @@ mod content_scanner;
 
 use filesystem::explorer::{
     create_directory, create_file, delete_file, open_directory, open_file, rename_file,
+    copy_file, paste_file, get_clipboard_path,
 };
 use filesystem::volume::get_volumes;
 use search::search_directory;
-use vault::{vault_create, vault_open, vault_lock, vault_list_entries, vault_import_file, vault_export_file, vault_delete_entry, vault_generate_recovery_codes};
+use vault::{vault_check_exists, vault_create, vault_open, vault_lock, vault_list_entries, vault_import_file, vault_export_file, vault_delete_entry, vault_generate_recovery_codes};
 use content_scanner::scan_directory_for_sensitive_files;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -69,6 +70,9 @@ async fn main() {
             create_directory,
             rename_file,
             delete_file,
+            copy_file,
+            paste_file,
+            get_clipboard_path,
             read_dir_recursive,
             // duplicate detector
             duplicate_detector::find_duplicate_files,
@@ -81,6 +85,7 @@ async fn main() {
             file_preview::metadata_for_path,
             
             // vault
+            vault_check_exists,
             vault_create,
             vault_open,
             vault_lock,

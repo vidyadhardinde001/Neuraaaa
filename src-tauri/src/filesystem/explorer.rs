@@ -126,9 +126,89 @@ pub async fn delete_file(state_mux: State<'_, StateSafe>, path: String) -> Resul
     let fs_event_manager = FsEventHandler::new(state_mux.deref().clone(), mount_point_str.into());
     fs_event_manager.handle_delete(Path::new(&path));
 
-    let res = fs::remove_file(path);
+    // Move to Recycle Bin instead of permanent deletion
+    let res = trash::delete(&path);
     match res {
         Ok(_) => Ok(()),
-        Err(err) => Err(Error::Custom(err.to_string())),
+        Err(err) => Err(Error::Custom(format!("Failed to move to Recycle Bin: {}", err))),
     }
+}
+
+#[tauri::command]
+pub async fn copy_file(path: String) -> Result<(), Error> {
+    use crate::filesystem::clipboard;
+    clipboard::set_clipboard_path(&path)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn get_clipboard_path() -> Result<String, Error> {
+    use crate::filesystem::clipboard;
+    clipboard::get_clipboard_path()
+}
+
+#[tauri::command]
+pub async fn paste_file(state_mux: State<'_, StateSafe>, destination: String) -> Result<String, Error> {
+    use crate::filesystem::clipboard;
+
+    // Get the source path from the backend clipboard
+    let source_path = clipboard::get_clipboard_path()?;
+    let source_meta = fs::metadata(&source_path)
+        .map_err(|e| Error::Custom(format!("Source file not found: {}", e)))?;
+
+    // Derive the filename from the source path
+    let source_file_name = Path::new(&source_path)
+        .file_name()
+        .ok_or_else(|| Error::Custom("Could not determine source filename".to_string()))?
+        .to_string_lossy()
+        .to_string();
+
+    // Build the full destination path by joining directory + filename
+    let dest_full_path = Path::new(&destination).join(&source_file_name);
+    let destination_path = dest_full_path.to_string_lossy().to_string();
+
+    if source_meta.is_dir() {
+        copy_dir_recursive(&source_path, &destination_path)?;
+    } else {
+        fs::copy(&source_path, &destination_path)
+            .map_err(|e| Error::Custom(format!("Failed to copy file: {}", e)))?;
+    }
+
+    let mount_point_str = get_mount_point(destination_path.clone()).unwrap_or_default();
+    let fs_event_manager = FsEventHandler::new(state_mux.deref().clone(), mount_point_str.into());
+    fs_event_manager.handle_create(
+        if source_meta.is_dir() { CreateKind::Folder } else { CreateKind::File },
+        &dest_full_path,
+    );
+
+    // Do NOT clear clipboard after paste — allow multiple pastes
+    Ok(source_file_name)
+}
+
+fn copy_dir_recursive(src: &str, dst: &str) -> Result<(), Error> {
+    fs::create_dir_all(dst)
+        .map_err(|e| Error::Custom(format!("Failed to create destination directory: {}", e)))?;
+
+    for entry in fs::read_dir(src)
+        .map_err(|e| Error::Custom(format!("Failed to read source directory: {}", e)))?
+    {
+        let entry = entry
+            .map_err(|e| Error::Custom(format!("Failed to read directory entry: {}", e)))?;
+        let path = entry.path();
+        let file_name = path.file_name()
+            .ok_or_else(|| Error::Custom("Invalid filename".to_string()))?;
+        let dest_path = Path::new(dst).join(file_name);
+
+        if path.is_dir() {
+            copy_dir_recursive(
+                path.to_str().unwrap_or(""),
+                dest_path.to_str().unwrap_or(""),
+            )?;
+        } else {
+            fs::copy(&path, &dest_path)
+                .map_err(|e| Error::Custom(format!("Failed to copy file: {}", e)))?;
+        }
+    }
+
+    Ok(())
 }

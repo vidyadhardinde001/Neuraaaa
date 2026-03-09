@@ -122,7 +122,7 @@ pub fn find_duplicate_files(window: Window, dir: String) -> Result<Vec<Duplicate
 #[command]
 pub fn delete_files(files: Vec<String>) -> Result<(), String> {
     for file in files {
-        if let Err(e) = fs::remove_file(&file) {
+        if let Err(e) = trash::delete(&file) {
             return Err(format!("Failed to delete {}: {}", file, e));
         }
     }

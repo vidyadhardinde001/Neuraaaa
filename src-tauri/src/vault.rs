@@ -598,6 +598,42 @@ impl Vault {
 // ========== Tauri Command Handlers ==========
 
 #[tauri::command]
+pub fn vault_check_exists(vault_path: String) -> Result<bool, String> {
+    Ok(Path::new(&vault_path).exists())
+}
+
+/// List all vault files in the .vault/ directory.
+/// Returns a Vec of (display_name, file_path) tuples.
+#[tauri::command]
+pub fn vault_list_vaults() -> Result<Vec<(String, String)>, String> {
+    let vault_dir = Path::new(".vault");
+    if !vault_dir.exists() {
+        return Ok(Vec::new());
+    }
+
+    let mut vaults = Vec::new();
+    let entries = std::fs::read_dir(vault_dir)
+        .map_err(|e| format!("Failed to read vault directory: {}", e))?;
+
+    for entry in entries {
+        let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) == Some("vault") {
+            let name = path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("unknown")
+                .to_string();
+            let path_str = path.to_string_lossy().to_string();
+            vaults.push((name, path_str));
+        }
+    }
+
+    vaults.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
+    Ok(vaults)
+}
+
+#[tauri::command]
 pub fn vault_create(
     vault_path: String,
     password: String,

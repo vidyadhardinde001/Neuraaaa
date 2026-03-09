@@ -7,9 +7,10 @@
 import { matchVoicePattern } from './voicePatterns';
 
 export interface ParsedCommand {
-  action: 'create_file' | 'create_folder' | 'delete_file' | 'delete_folder' | 'rename_file' | 'unknown';
+  action: 'create_file' | 'create_folder' | 'delete_file' | 'delete_folder' | 'rename_file' | 'search' | 'copy' | 'paste' | 'unknown';
   target?: string; // filename or folder name
   newName?: string; // for rename operations
+  query?: string; // for search operations
   error?: string;
 }
 
@@ -62,6 +63,23 @@ export function parseVoiceCommand(input: string): ParsedCommand {
         action: 'rename_file',
         target: params[0]?.trim(),
         newName: params[1]?.trim(),
+      };
+
+    case 'search':
+      return {
+        action: 'search',
+        query: params[0]?.trim(),
+      };
+
+    case 'copy':
+      return {
+        action: 'copy',
+        target: params[0]?.trim(),
+      };
+
+    case 'paste':
+      return {
+        action: 'paste',
       };
 
     default:

@@ -5,7 +5,7 @@
  */
 
 export interface VoicePattern {
-  action: 'create_file' | 'create_folder' | 'delete_file' | 'delete_folder' | 'rename_file';
+  action: 'create_file' | 'create_folder' | 'delete_file' | 'delete_folder' | 'rename_file' | 'search' | 'copy' | 'paste';
   patterns: RegExp[];
   paramCount: number; // number of capture groups
   examples: string[]; // user-friendly examples
@@ -169,6 +169,90 @@ export const VOICE_PATTERNS: VoicePattern[] = [
       'change name of old to new',
       'alter file to updated version',
       'rename the archive to final archive',
+    ],
+  },
+
+  // SEARCH variations (10 patterns)
+  {
+    action: 'search',
+    patterns: [
+      /^search\s+(?:for\s+)?(.+)$/i,
+      /^find\s+(.+)$/i,
+      /^look\s+(?:for\s+)?(.+)$/i,
+      /^search\s+for\s+(.+)$/i,
+      /^locate\s+(.+)$/i,
+      /^grep\s+(.+)$/i,
+      /^find\s+files?\s+named?\s+(.+)$/i,
+      /^search\s+files?\s+(?:containing\s+)?(.+)$/i,
+      /^hunt\s+(?:for\s+)?(.+)$/i,
+      /^query\s+(?:for\s+)?(.+)$/i,
+    ],
+    paramCount: 1,
+    examples: [
+      'search for documents',
+      'find pdf files',
+      'look for backup',
+      'search for reports',
+      'locate myfile',
+      'grep config',
+      'find files named archive',
+      'search files containing data',
+      'hunt for old files',
+      'query for temp',
+    ],
+  },
+
+  // COPY variations (9 patterns)
+  {
+    action: 'copy',
+    patterns: [
+      /^copy\s+(?:the\s+)?(?:file\s+)?(?:named?\s+)?(?:called?\s+)?(.+)$/i,
+      /^duplicate\s+(?:the\s+)?(?:file\s+)?(?:named?\s+)?(.+)$/i,
+      /^copy\s+file\s+(.+)$/i,
+      /^clone\s+(?:the\s+)?(?:file\s+)?(.+)$/i,
+      /^replicate\s+(?:the\s+)?(?:file\s+)?(.+)$/i,
+      /^backup\s+(?:the\s+)?(?:file\s+)?(.+)$/i,
+      /^cp\s+(.+)$/i,
+      /^copy\s+(?:folder|directory)\s+(?:named?\s+)?(.+)$/i,
+      /^duplicate\s+(?:folder|directory)\s+(?:named?\s+)?(.+)$/i,
+    ],
+    paramCount: 1,
+    examples: [
+      'copy file myfile dot txt',
+      'duplicate the report',
+      'copy file data dot json',
+      'clone archive',
+      'replicate backup',
+      'backup the document',
+      'cp config',
+      'copy folder projects',
+      'duplicate directory backups',
+    ],
+  },
+
+  // PASTE variations (8 patterns)
+  {
+    action: 'paste',
+    patterns: [
+      /^paste\s+(?:the\s+)?(?:file\s+)?(?:here)?$/i,
+      /^paste\s+(?:it\s+)?(?:here)?$/i,
+      /^paste$/i,
+      /^insert\s+(?:the\s+)?(?:file\s+)?(?:here)?$/i,
+      /^drop\s+(?:the\s+)?(?:file\s+)?(?:here)?$/i,
+      /^place\s+(?:the\s+)?(?:file\s+)?(?:here)?$/i,
+      /^apply\s+(?:the\s+)?(?:file\s+)?(?:here)?$/i,
+      /^restore\s+(?:the\s+)?(?:file\s+)?(?:here)?$/i,
+    ],
+    paramCount: 0,
+    examples: [
+      'paste',
+      'paste here',
+      'paste the file',
+      'insert file here',
+      'drop it',
+      'place the file',
+      'apply here',
+      'restore file',
     ],
   },
 ];

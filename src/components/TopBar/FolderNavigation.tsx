@@ -17,14 +17,14 @@
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faArrowRight, faSyncAlt } from "@fortawesome/free-solid-svg-icons";
-import { Plus, FolderPlus, Edit3, Trash2 } from "lucide-react";
+import { Plus, FolderPlus, Edit3, Trash2, Lock } from "lucide-react";
 import InputModal from "../InputModal";
 import VoiceInput from "../VoiceInput";
 import { createDirectoryContent, removeFileNameFromPath } from "../../util";
 import { unselectDirectoryContents } from "../../state/slices/currentDirectorySlice";
 import { useAppDispatch, useAppSelector } from "../../state/hooks";
 import { selectDirectoryContents, selectCurrentSelectedContentIdx, addContent, deleteContent, renameContent, selectContentIdx } from "../../state/slices/currentDirectorySlice";
-import { createFile, createDirectory, renameFile, deleteFile } from "../../ipc";
+import { createFile, createDirectory, renameFile, deleteFile, copyFile, pasteFile, getClipboardPath } from "../../ipc";
 import { useState, useEffect, Dispatch, SetStateAction } from "react";
 import SettingsModal from "../SettingsModal";
 import { parseVoiceCommand, findFileInList } from "../../utils/voiceCommandParser";
@@ -42,9 +42,10 @@ export interface Props {
     currentDirectoryPath?: string;
     currentVolume?: string;
     setSearchResults?: Dispatch<SetStateAction<any[]>>;
+    onVaultOpen?: () => void;
 }
 
-export default function FolderNavigation({ onBackArrowClick, canGoBackward, onForwardArrowClick, canGoForward, onRefresh, currentDirectoryPath, currentVolume, setSearchResults }: Props & { currentDirectoryPath?: string, currentVolume?: string, setSearchResults?: Dispatch<SetStateAction<any[]>> }) {
+export default function FolderNavigation({ onBackArrowClick, canGoBackward, onForwardArrowClick, canGoForward, onRefresh, currentDirectoryPath, currentVolume, setSearchResults, onVaultOpen }: Props & { currentDirectoryPath?: string, currentVolume?: string, setSearchResults?: Dispatch<SetStateAction<any[]>>, onVaultOpen?: () => void }) {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [newFileShown, setNewFileShown] = useState(false);
@@ -64,7 +65,7 @@ export default function FolderNavigation({ onBackArrowClick, canGoBackward, onFo
     const [scannedCount, setScannedCount] = useState<number>(0);
     const [matchedCount, setMatchedCount] = useState<number>(0);
     const [countsByType, setCountsByType] = useState<Record<string, number>>({});
-    const [countsByExtension, setCountsByExtension] = useState<Record<string, number>>({});
+    const [countsByExtension, setCountsByExtension] = useState<Record<string, number>>();
 
     const dispatch = useAppDispatch();
     const contents = useAppSelector(selectDirectoryContents);
@@ -144,12 +145,18 @@ export default function FolderNavigation({ onBackArrowClick, canGoBackward, onFo
                     setToastType("error");
                     return;
                 }
-                await deleteFile(path);
-                dispatch(deleteContent(found));
-                dispatch(unselectDirectoryContents());
-                setToastMsg(`"${meta.name}" deleted successfully`);
-                setToastType("success");
-                await onRefresh();
+                try {
+                    await deleteFile(path);
+                    dispatch(deleteContent(found));
+                    dispatch(unselectDirectoryContents());
+                    setToastMsg(`"${meta.name}" moved to Recycle Bin`);
+                    setToastType("success");
+                    await onRefresh();
+                } catch (err) {
+                    const errorMsg = String(err);
+                    setToastMsg(`Cannot delete "${meta.name}": ${errorMsg}`);
+                    setToastType("error");
+                }
                 return;
             }
 
@@ -175,22 +182,99 @@ export default function FolderNavigation({ onBackArrowClick, canGoBackward, onFo
                 const parent = removeFileNameFromPath(oldPath);
                 const sep = oldPath.includes("\\") ? "\\" : "/";
                 const newPath = parent ? `${parent}${sep}${parsed.newName}` : parsed.newName;
-                await renameFile(oldPath, newPath);
-                const oldContent = createDirectoryContent(
-                    meta.is_dir ? "Directory" : "File",
-                    meta.name,
-                    oldPath
-                );
-                const newContent = createDirectoryContent(
-                    meta.is_dir ? "Directory" : "File",
-                    parsed.newName,
-                    newPath
-                );
-                dispatch(renameContent([oldContent, newContent]));
-                dispatch(selectContentIdx(0));
-                setToastMsg(`Renamed to "${parsed.newName}"`);
+                try {
+                    await renameFile(oldPath, newPath);
+                    const oldContent = createDirectoryContent(
+                        meta.is_dir ? "Directory" : "File",
+                        meta.name,
+                        oldPath
+                    );
+                    const newContent = createDirectoryContent(
+                        meta.is_dir ? "Directory" : "File",
+                        parsed.newName,
+                        newPath
+                    );
+                    dispatch(renameContent([oldContent, newContent]));
+                    dispatch(selectContentIdx(0));
+                    setToastMsg(`Renamed to "${parsed.newName}"`);
+                    setToastType("success");
+                    await onRefresh();
+                } catch (err) {
+                    const errorMsg = String(err);
+                    setToastMsg(`Cannot rename "${meta.name}": ${errorMsg}`);
+                    setToastType("error");
+                }
+                return;
+            }
+
+            if (parsed.action === 'search') {
+                if (!parsed.query) {
+                    setToastMsg("Please specify a search query");
+                    setToastType("error");
+                    return;
+                }
+                setSearchValue(parsed.query);
+                setToastMsg(`Searching for "${parsed.query}"...`);
                 setToastType("success");
-                await onRefresh();
+                // Trigger search with the voice query
+                // We'll use a setTimeout to ensure state is updated first
+                setTimeout(() => {
+                    performSearch(parsed.query!);
+                }, 0);
+                return;
+            }
+
+            if (parsed.action === 'copy') {
+                if (!parsed.target) {
+                    setToastMsg("Please specify a file or folder name");
+                    setToastType("error");
+                    return;
+                }
+                const found = findFileInList(parsed.target, contents);
+                if (!found) {
+                    setToastMsg(`Could not find "${parsed.target}" in current directory`);
+                    setToastType("error");
+                    return;
+                }
+                const meta = (found as any).meta || (found as any).File || (found as any).Directory || found;
+                const path = meta?.path;
+                if (!path) {
+                    setToastMsg("Could not determine path to copy");
+                    setToastType("error");
+                    return;
+                }
+                try {
+                    await copyFile(path);
+                    setToastMsg(`"${meta.name}" copied — say "paste" to paste it`);
+                    setToastType("success");
+                } catch (err) {
+                    const errorMsg = String(err);
+                    setToastMsg(`Failed to copy "${meta.name}": ${errorMsg}`);
+                    setToastType("error");
+                }
+                return;
+            }
+
+            if (parsed.action === 'paste') {
+                try {
+                    // Check backend clipboard first to give a helpful message if empty
+                    let clipboardPath: string;
+                    try {
+                        clipboardPath = await getClipboardPath();
+                    } catch {
+                        setToastMsg("Nothing to paste. Copy a file or folder first using voice: \"copy file [name]\".");
+                        setToastType("error");
+                        return;
+                    }
+                    const pastedName = await pasteFile(currentDirectoryPath || "");
+                    setToastMsg(`"${pastedName}" pasted successfully`);
+                    setToastType("success");
+                    await onRefresh();
+                } catch (err) {
+                    const errorMsg = String(err);
+                    setToastMsg(`Failed to paste: ${errorMsg}`);
+                    setToastType("error");
+                }
                 return;
             }
         } catch (e) {
@@ -200,19 +284,10 @@ export default function FolderNavigation({ onBackArrowClick, canGoBackward, onFo
     };
 
     // Search functions (compact version integrated into nav)
-    useEffect(() => {
-        // noop cleanup placeholder
-        return () => { };
-    }, []);
-
-    async function onSearch() {
+    async function performSearch(query: string) {
         if (!currentVolume) {
-            alert("Please select a volume before searching.");
-            return;
-        }
-
-        if (isSearching) {
-            setIsSearching(false);
+            setToastMsg("Please select a volume before searching");
+            setToastType("error");
             return;
         }
 
@@ -267,7 +342,7 @@ export default function FolderNavigation({ onBackArrowClick, canGoBackward, onFo
 
         try {
             await invoke("search_directory", {
-                query: searchValue,
+                query: query,
                 searchDirectory: currentDirectoryPath,
                 mountPnt: currentVolume,
                 extension: "",
@@ -281,6 +356,20 @@ export default function FolderNavigation({ onBackArrowClick, canGoBackward, onFo
             try { unlistenFinished(); } catch { }
             try { unlistenProgress(); } catch { }
         }
+    }
+
+    async function onSearch() {
+        if (!currentVolume) {
+            alert("Please select a volume before searching.");
+            return;
+        }
+
+        if (isSearching) {
+            setIsSearching(false);
+            return;
+        }
+
+        performSearch(searchValue);
     }
 
     return (
@@ -354,10 +443,13 @@ export default function FolderNavigation({ onBackArrowClick, canGoBackward, onFo
                             const meta = (sel as any).meta || (sel as any).File || (sel as any).Directory || (() => null)();
                             const path = meta?.path;
                             if (!path) return alert('Selected item has no path');
-                            const ok = confirm(`Are you sure you want to delete ${meta.name}?`);
+                            const ok = confirm(`Move ${meta.name} to Recycle Bin?`);
                             if (!ok) return;
                             try { await deleteFile(path); dispatch(deleteContent(sel)); dispatch(unselectDirectoryContents()); await onRefresh(); } catch (e) { alert(String(e)); }
                         }} title="Delete selected" disabled={selectedIdx === undefined} className="p-2 rounded-full transition-colors duration-200 bg-gray-200 text-gray-600 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"><Trash2 className="w-4 h-4" /></button>
+
+                        {/* Vault */}
+                        <button onClick={() => onVaultOpen?.()} title="Open Vault" className="p-2 rounded-full transition-colors duration-200 bg-gray-200 text-gray-700 hover:bg-gray-300 hover:text-blue-600"><Lock className="w-4 h-4" /></button>
 
                         {/* Voice */}
                         <VoiceInput onCommandReceived={handleVoiceCommand} />

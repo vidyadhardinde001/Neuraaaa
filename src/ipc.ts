@@ -52,3 +52,15 @@ export async function getRenamerSchemes(): Promise<string[]> {
    return invoke("get_renamer_schemes");
 }
 
+export async function copyFile(path: string): Promise<void> {
+   return invoke("copy_file", { path });
+}
+
+export async function pasteFile(destinationDir: string): Promise<string> {
+   return invoke("paste_file", { destination: destinationDir });
+}
+
+export async function getClipboardPath(): Promise<string> {
+   return invoke("get_clipboard_path");
+}
+
